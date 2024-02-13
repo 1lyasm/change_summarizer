@@ -7,7 +7,11 @@
 #include <iostream>
 #include <sstream>
 #include <string>
-#include <vector>
+
+[[noreturn]] static void fail(std::string &msg) {
+    fprintf(stderr, "%s: %s\n", __func__, msg.c_str());
+    exit(EXIT_FAILURE);
+}
 
 class PpmParser {
 private:

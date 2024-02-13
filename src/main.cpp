@@ -7,6 +7,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <vector>
 
 class PpmParser {
 private:
@@ -47,6 +48,15 @@ public:
   }
 };
 
+class Pixel {
+  unsigned r, g, b;
+};
+
+class Im {
+private:
+  std::vector<std::vector<Pixel>> mtx_;
+};
+
 int main() {
   std::ifstream ifile("data/tree_2.ppm", std::ios::binary);
 
@@ -75,6 +85,8 @@ int main() {
 
   std::cout << "ncol: " << ncol << ", nrow: " << nrow << ", maxval: " << maxval
             << "\n";
+
+  Im im;
 
   free(imstr);
 }

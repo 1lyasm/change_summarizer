@@ -8,31 +8,44 @@
 #include <sstream>
 #include <string>
 
-static void expect(unsigned char val, unsigned char targ) {
-  if (val != targ) {
-    fprintf(stderr, "%s: expected '%c', found '%c'\n", __func__, targ, val);
-    exit(EXIT_FAILURE);
-  }
-}
+class PpmParser {
+private:
+  unsigned char *ppmstr_;
+  unsigned idx_;
 
-static unsigned parse_num(unsigned char *im, unsigned &idx,
-                          unsigned char delim) {
-  unsigned num = 0, ndigit = 0, coef = 1;
-
-  ++idx;
-  for (; im[idx + ndigit] != delim; ++ndigit)
-    ;
-
-  for (unsigned i = ndigit - 1, j = 0; j < ndigit; --i, ++j) {
-    num += coef * (im[idx + i] - '0');
-    coef *= 10;
+  void expect_(unsigned char val, unsigned char targ) {
+    if (val != targ) {
+      fprintf(stderr, "%s: expected '%c', found '%c'\n", __func__, targ, val);
+      exit(EXIT_FAILURE);
+    }
   }
 
-  idx += ndigit;
-  expect(im[idx], delim);
+public:
+  PpmParser(unsigned char *str) : ppmstr_(str), idx_(0) {}
 
-  return num;
-}
+  void next(std::string chars) {
+    for (unsigned i = 0; i < chars.size(); ++i, ++idx_) {
+      expect_(ppmstr_[idx_], static_cast<unsigned char>(chars[i]));
+    }
+  }
+
+  unsigned next_num(unsigned char delim) {
+    unsigned num = 0, ndigit = 0, coef = 1;
+
+    for (; ppmstr_[idx_ + ndigit] != delim; ++ndigit)
+      ;
+
+    for (unsigned i = ndigit - 1, j = 0; j < ndigit; --i, ++j) {
+      num += coef * (ppmstr_[idx_ + i] - '0');
+      coef *= 10;
+    }
+
+    idx_ += ndigit;
+    expect_(ppmstr_[idx_++], delim);
+
+    return num;
+  }
+};
 
 int main() {
   std::ifstream ifile("data/tree_2.ppm", std::ios::binary);
@@ -40,34 +53,28 @@ int main() {
   std::basic_ostringstream<char> ostr;
   ostr << ifile.rdbuf();
 
-  const std::string &&imref = ostr.rdbuf()->str();
-  std::size_t imlen = imref.size();
-  unsigned char *im =
-      static_cast<unsigned char *>(malloc((imlen + 1) * sizeof(unsigned char)));
-  if (im == nullptr) {
+  const std::string &&imstrref = ostr.rdbuf()->str();
+  std::size_t imstrlen = imstrref.size();
+  unsigned char *imstr = static_cast<unsigned char *>(
+      malloc((imstrlen + 1) * sizeof(unsigned char)));
+  if (imstr == nullptr) {
     fprintf(stderr, "%s: malloc failed\n", __func__);
     exit(EXIT_FAILURE);
   }
 
-  for (unsigned i = 0; i < imlen; ++i) {
-    im[i] = static_cast<unsigned char>(imref.data()[i]);
+  for (unsigned i = 0; i < imstrlen; ++i) {
+    imstr[i] = static_cast<unsigned char>(imstrref.data()[i]);
   }
-  im[imlen] = 0;
+  imstr[imstrlen] = 0;
 
-  unsigned idx = 0;
-  expect(im[idx], 'P');
-  expect(im[++idx], '6');
-  expect(im[++idx], '\n');
-  unsigned ncol = parse_num(im, idx, ' ');
-  unsigned nrow = parse_num(im, idx, '\n');
-  unsigned maxval = parse_num(im, idx, '\n');
+  PpmParser p(imstr);
+  p.next("P6\n");
+  unsigned ncol = p.next_num(' ');
+  unsigned nrow = p.next_num('\n');
+  unsigned maxval = p.next_num('\n');
 
-  std::cout << "ncol: " << ncol << ", nrow: " << nrow << ", maxval: "
-            << maxval << "\n";
+  std::cout << "ncol: " << ncol << ", nrow: " << nrow << ", maxval: " << maxval
+            << "\n";
 
-  /* for (unsigned i = 0; i < imlen; ++i) { */
-  /*   std::cout << std::to_string(im[i]) << "\n"; */
-  /* } */
-
-  free(im);
+  free(imstr);
 }
